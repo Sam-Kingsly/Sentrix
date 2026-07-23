@@ -19,6 +19,9 @@ export default function ChatPage() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [inputFocused, setInputFocused] = useState(false);
   
+  // 🔥 NEW: State to track which message is currently being read aloud
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+  
   const recognitionRef = useRef<any>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -82,15 +85,48 @@ export default function ChatPage() {
     }
   };
 
-  const speakText = (text: string) => {
+  // 🔥 UPGRADED: Toggle speech function with <think> tag stripping
+  const toggleSpeech = (id: string, text: string) => {
     if ('speechSynthesis' in window) {
+      // If this message is already playing, stop it and clear the state
+      if (speakingMessageId === id) {
+        window.speechSynthesis.cancel();
+        setSpeakingMessageId(null);
+        return;
+      }
+
+      // Otherwise, stop anything currently playing and start the new message
       window.speechSynthesis.cancel(); 
-      const cleanText = text.replace(/\[MAP:\s*([0-9.-]+)\s*,\s*([0-9.-]+)\]/gi, '');
+      
+      // Strip <think> blocks and [MAP] tags before reading
+      const cleanText = text
+        .replace(/<think>[\s\S]*?<\/think>/gi, '')
+        .replace(/\[MAP:\s*([0-9.-]+)\s*,\s*([0-9.-]+)\]/gi, '')
+        .trim();
+
       const utterance = new SpeechSynthesisUtterance(cleanText);
+      
+      // Use the currently selected mic language for output if you want, 
+      // or default to English for the AI's responses
       utterance.lang = 'en-IN'; 
+
+      // Update state when audio starts and finishes
+      utterance.onstart = () => setSpeakingMessageId(id);
+      utterance.onend = () => setSpeakingMessageId(null);
+      utterance.onerror = () => setSpeakingMessageId(null);
+
       window.speechSynthesis.speak(utterance);
     }
   };
+
+  // Cleanup speech synthesis when component unmounts to prevent ghost audio
+  useEffect(() => {
+    return () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   const exportPDF = () => {
     window.print();
@@ -292,6 +328,8 @@ export default function ChatPage() {
               lng = parseFloat(mapMatch[2]);
             }
 
+            const isCurrentlySpeaking = speakingMessageId === m.id;
+
             return (
               <div key={m.id} style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start' }}>
                 <div className="chat-bubble" style={{ 
@@ -317,7 +355,6 @@ export default function ChatPage() {
                     {isUser ? (
                       <span style={{ fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', fontSize: '11px' }}>🕵️ INVESTIGATOR</span>
                     ) : (
-                      // 🔥 Custom 𝐒ᴇɴᴛʀɪx Identity inside the chat bubble
                       <span style={{ 
                         fontFamily: "'Outfit', sans-serif", 
                         fontWeight: 800, 
@@ -357,17 +394,28 @@ export default function ChatPage() {
                     </div>
                   )}
                   
+                  {/* 🔥 UPGRADED: Dynamic Audio Control Button */}
                   {!isUser && (
-                    <button className="no-print" onClick={() => speakText(m.content)} style={{ 
-                      marginTop: '12px', fontSize: '12px', background: 'rgba(0, 240, 255, 0.1)', 
-                      border: '1px solid rgba(0, 240, 255, 0.2)', borderRadius: '12px', cursor: 'pointer', 
-                      color: '#00f0ff', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '6px',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0, 240, 255, 0.2)'}
-                    onMouseOut={(e) => e.currentTarget.style.background = 'rgba(0, 240, 255, 0.1)'}
+                    <button 
+                      className="no-print" 
+                      onClick={() => toggleSpeech(m.id, m.content)} 
+                      style={{ 
+                        marginTop: '12px', fontSize: '12px', 
+                        background: isCurrentlySpeaking ? 'rgba(239, 68, 68, 0.1)' : 'rgba(0, 240, 255, 0.1)', 
+                        border: isCurrentlySpeaking ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(0, 240, 255, 0.2)', 
+                        borderRadius: '12px', cursor: 'pointer', 
+                        color: isCurrentlySpeaking ? '#ef4444' : '#00f0ff', 
+                        padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '6px',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.background = isCurrentlySpeaking ? 'rgba(239, 68, 68, 0.2)' : 'rgba(0, 240, 255, 0.2)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.background = isCurrentlySpeaking ? 'rgba(239, 68, 68, 0.1)' : 'rgba(0, 240, 255, 0.1)';
+                      }}
                     >
-                      🔊 Read Aloud
+                      {isCurrentlySpeaking ? '🛑 Stop Reading' : '🔊 Read Aloud'}
                     </button>
                   )}
                 </div>
