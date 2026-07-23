@@ -10,6 +10,37 @@ interface Message {
   image?: string;
 }
 
+// Neon Blue Cyber Logo Component
+function SentrixLogo({ className = "w-10 h-10" }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" className={className} style={{ width: '36px', height: '36px', flexShrink: 0 }}>
+      <defs>
+        <filter id="cyberGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="12" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+        <linearGradient id="cyberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#00f0ff" />
+          <stop offset="100%" stopColor="#0077ff" />
+        </linearGradient>
+      </defs>
+      <g fill="#00f0ff" opacity="0.3" fontFamily="monospace" fontSize="24" fontWeight="bold">
+        <text x="120" y="110">1</text><text x="120" y="140">0</text><text x="120" y="170">1</text>
+        <text x="360" y="270">0</text><text x="360" y="300">1</text><text x="360" y="330">0</text>
+      </g>
+      <polygon points="250,60 400,140 400,360 250,440 100,360 100,140" fill="none" stroke="url(#cyberGrad)" strokeWidth="6" filter="url(#cyberGlow)"/>
+      <circle cx="250" cy="60" r="8" fill="#00f0ff" filter="url(#cyberGlow)" />
+      <circle cx="400" cy="140" r="8" fill="#00f0ff" />
+      <circle cx="400" cy="360" r="8" fill="#00f0ff" />
+      <circle cx="250" cy="440" r="8" fill="#00f0ff" filter="url(#cyberGlow)" />
+      <circle cx="100" cy="360" r="8" fill="#00f0ff" />
+      <circle cx="100" cy="140" r="8" fill="#00f0ff" />
+      <path d="M 310 190 L 190 190 L 190 250 L 310 250 L 310 320 L 190 320" fill="none" stroke="#00f0ff" strokeWidth="28" strokeLinejoin="miter" filter="url(#cyberGlow)"/>
+      <path d="M 310 190 L 190 190 L 190 250 L 310 250 L 310 320 L 190 320" fill="none" stroke="#E0F2FE" strokeWidth="8" strokeLinejoin="miter"/>
+    </svg>
+  );
+}
+
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -19,7 +50,6 @@ export default function ChatPage() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [inputFocused, setInputFocused] = useState(false);
   
-  // 🔥 NEW: State to track which message is currently being read aloud
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   
   const recognitionRef = useRef<any>(null);
@@ -85,32 +115,24 @@ export default function ChatPage() {
     }
   };
 
-  // 🔥 UPGRADED: Toggle speech function with <think> tag stripping
   const toggleSpeech = (id: string, text: string) => {
     if ('speechSynthesis' in window) {
-      // If this message is already playing, stop it and clear the state
       if (speakingMessageId === id) {
         window.speechSynthesis.cancel();
         setSpeakingMessageId(null);
         return;
       }
 
-      // Otherwise, stop anything currently playing and start the new message
       window.speechSynthesis.cancel(); 
       
-      // Strip <think> blocks and [MAP] tags before reading
       const cleanText = text
         .replace(/<think>[\s\S]*?<\/think>/gi, '')
         .replace(/\[MAP:\s*([0-9.-]+)\s*,\s*([0-9.-]+)\]/gi, '')
         .trim();
 
       const utterance = new SpeechSynthesisUtterance(cleanText);
-      
-      // Use the currently selected mic language for output if you want, 
-      // or default to English for the AI's responses
       utterance.lang = 'en-IN'; 
 
-      // Update state when audio starts and finishes
       utterance.onstart = () => setSpeakingMessageId(id);
       utterance.onend = () => setSpeakingMessageId(null);
       utterance.onerror = () => setSpeakingMessageId(null);
@@ -119,7 +141,6 @@ export default function ChatPage() {
     }
   };
 
-  // Cleanup speech synthesis when component unmounts to prevent ghost audio
   useEffect(() => {
     return () => {
       if ('speechSynthesis' in window) {
@@ -219,10 +240,8 @@ export default function ChatPage() {
   return (
     <>
       <style>{`
-        /* 🔥 Import Outfit Font */
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
 
-        /* Custom Modern Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
@@ -255,12 +274,12 @@ export default function ChatPage() {
         padding: '0 20px'
       }}>
         
-        {/* Header - Glassmorphic */}
+        {/* Header - Glassmorphic with Neon Blue Branding */}
         <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
-          padding: '20px 0', 
+          padding: '16px 0', 
           borderBottom: '1px solid rgba(30, 41, 59, 0.5)',
           background: 'rgba(5, 11, 20, 0.8)',
           backdropFilter: 'blur(10px)',
@@ -268,26 +287,30 @@ export default function ChatPage() {
           top: 0,
           zIndex: 10
         }}>
-          <div>
-            <h2 style={{ margin: 0, color: '#00f0ff', letterSpacing: '1px', fontSize: '22px', display: 'flex', alignItems: 'center', gap: '8px', fontFamily: "'Outfit', sans-serif", fontWeight: 800 }}>
-              <span style={{ fontSize: '24px' }}>⚡</span> 𝐒ᴇɴᴛʀɪx
-            </h2>
-            <p style={{ margin: '4px 0 0 38px', fontSize: '12px', color: '#64748b', fontWeight: 500, letterSpacing: '0.5px' }}>
-              Autonomous Crime Intelligence Platform
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <SentrixLogo />
+            <div>
+              <h2 style={{ margin: 0, color: '#00f0ff', letterSpacing: '1px', fontSize: '22px', fontFamily: "'Outfit', sans-serif", fontWeight: 800, textShadow: '0 0 12px rgba(0, 240, 255, 0.5)' }}>
+                𝐒ᴇɴᴛʀɪx
+              </h2>
+              <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#64748b', fontWeight: 500, letterSpacing: '0.5px' }}>
+                Autonomous Crime Intelligence Platform
+              </p>
+            </div>
           </div>
           
           <button 
             onClick={exportPDF} 
             className="no-print"
             style={{ 
-              padding: '8px 16px', background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', 
-              border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '20px', 
+              padding: '8px 16px', background: 'rgba(0, 240, 255, 0.1)', color: '#00f0ff', 
+              border: '1px solid rgba(0, 240, 255, 0.3)', borderRadius: '20px', 
               cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', 
+              boxShadow: '0 0 10px rgba(0, 240, 255, 0.15)',
               transition: 'all 0.2s ease' 
             }}
-            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(34, 197, 94, 0.2)'}
-            onMouseOut={(e) => e.currentTarget.style.background = 'rgba(34, 197, 94, 0.1)'}
+            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0, 240, 255, 0.2)'}
+            onMouseOut={(e) => e.currentTarget.style.background = 'rgba(0, 240, 255, 0.1)'}
           >
             📄 Export PDF
           </button>
@@ -303,10 +326,10 @@ export default function ChatPage() {
           gap: '24px'
         }}>
           {messages.length === 0 && (
-            <div className="no-print" style={{ textAlign: 'center', color: '#475569', margin: 'auto', maxWidth: '400px' }}>
-              <div style={{ fontSize: '40px', marginBottom: '16px', color: '#00f0ff', opacity: 0.5, fontFamily: "'Outfit', sans-serif", fontWeight: 800 }}>⛑️ 𝐒ᴇɴᴛʀɪx</div>
-              <p style={{ fontSize: '16px', fontWeight: 500, color: '#94a3b8' }}>Secure Connection Established.</p>
-              <p style={{ fontSize: '13px', lineHeight: '1.6' }}>
+            <div className="no-print" style={{ textAlign: 'center', color: '#475569', margin: 'auto', maxWidth: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+              <SentrixLogo className="w-16 h-16" />
+              <p style={{ fontSize: '16px', fontWeight: 500, color: '#94a3b8', margin: 0 }}>Secure Connection Established.</p>
+              <p style={{ fontSize: '13px', lineHeight: '1.6', margin: 0 }}>
                 Upload visual evidence, request pattern tracking, or analyze case hotspots.
               </p>
             </div>
@@ -394,7 +417,6 @@ export default function ChatPage() {
                     </div>
                   )}
                   
-                  {/* 🔥 UPGRADED: Dynamic Audio Control Button */}
                   {!isUser && (
                     <button 
                       className="no-print" 
@@ -407,12 +429,6 @@ export default function ChatPage() {
                         color: isCurrentlySpeaking ? '#ef4444' : '#00f0ff', 
                         padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '6px',
                         transition: 'all 0.2s'
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.background = isCurrentlySpeaking ? 'rgba(239, 68, 68, 0.2)' : 'rgba(0, 240, 255, 0.2)';
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.background = isCurrentlySpeaking ? 'rgba(239, 68, 68, 0.1)' : 'rgba(0, 240, 255, 0.1)';
                       }}
                     >
                       {isCurrentlySpeaking ? '🛑 Stop Reading' : '🔊 Read Aloud'}
@@ -433,7 +449,6 @@ export default function ChatPage() {
           
           <div style={{ maxWidth: '800px', margin: '0 auto' }}>
             
-            {/* Language & Image Toggles (Above Input) */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '10px', padding: '0 10px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <span style={{ fontSize: '11px', color: '#64748b', alignSelf: 'center', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Mic Lang:</span>
@@ -459,7 +474,6 @@ export default function ChatPage() {
               )}
             </div>
 
-            {/* Glowing Pill Input Box */}
             <form onSubmit={onSubmitMessage} style={{ 
               display: 'flex', 
               alignItems: 'center',
@@ -474,9 +488,7 @@ export default function ChatPage() {
               <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} />
               
               <button type="button" onClick={() => fileInputRef.current?.click()} 
-                style={{ padding: '10px', background: 'transparent', color: '#94a3b8', border: 'none', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}
-                onMouseOver={(e) => e.currentTarget.style.color = '#00f0ff'}
-                onMouseOut={(e) => e.currentTarget.style.color = '#94a3b8'}
+                style={{ padding: '10px', background: 'transparent', color: '#94a3b8', border: 'none', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center' }}
                 title="Attach Image"
               >
                 📎
@@ -499,11 +511,8 @@ export default function ChatPage() {
                 style={{ 
                   padding: '10px', background: isListening ? 'rgba(239, 68, 68, 0.2)' : 'transparent', 
                   color: isListening ? '#ef4444' : '#94a3b8', border: 'none', borderRadius: '50%', 
-                  cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', marginRight: '4px',
-                  transition: 'all 0.2s'
+                  cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', marginRight: '4px'
                 }}
-                onMouseOver={(e) => { if(!isListening) e.currentTarget.style.color = '#00f0ff'}}
-                onMouseOut={(e) => { if(!isListening) e.currentTarget.style.color = '#94a3b8'}}
               >
                 {isListening ? '🎙️' : '🎤'}
               </button>
@@ -511,10 +520,10 @@ export default function ChatPage() {
               <button type="submit" disabled={isLoading} 
                 style={{ 
                   padding: '10px 20px', background: isLoading ? '#1e293b' : '#00f0ff', 
-                  color: isLoading ? '#050b14' : '#050b14', border: 'none', borderRadius: '20px', 
+                  color: '#050b14', border: 'none', borderRadius: '20px', 
                   cursor: isLoading ? 'default' : 'pointer', fontWeight: 700, fontSize: '14px',
                   fontFamily: "'Outfit', sans-serif", letterSpacing: '1px',
-                  transition: 'all 0.2s', boxShadow: isLoading ? 'none' : '0 0 15px rgba(0, 240, 255, 0.4)'
+                  boxShadow: isLoading ? 'none' : '0 0 15px rgba(0, 240, 255, 0.4)'
                 }}
               >
                 {isLoading ? 'SCANNING' : 'SEND'}
