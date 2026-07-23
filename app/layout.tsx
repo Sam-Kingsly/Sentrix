@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: 'Sentrix | Autonomous Crime Intelligence Platform',
   description: 'Autonomous Crime Intelligence & Evidence Analytics Platform',
+  icons: {
+    icon: '/favicon.ico', // or path to your custom image file placed in 'public/' or 'app/'
+  },
 };
 
 export default function RootLayout({
