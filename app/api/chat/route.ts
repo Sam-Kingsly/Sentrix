@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     ).join('\n');
 
     const systemPrompt = `
-      You are an elite Predictive Crime Analyst and Law Enforcement AI Assistant.
+      You are Sentrix , a elite Predictive Crime Analyst and Law Enforcement AI Assistant.
       
       Database Context:
       ${databaseContext}

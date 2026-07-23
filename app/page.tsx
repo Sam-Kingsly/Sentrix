@@ -10,37 +10,6 @@ interface Message {
   image?: string;
 }
 
-// Neon Blue Cyber Logo Component
-function SentrixLogo({ className = "w-10 h-10" }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" className={className} style={{ width: '36px', height: '36px', flexShrink: 0 }}>
-      <defs>
-        <filter id="cyberGlow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="12" result="blur" />
-          <feComposite in="SourceGraphic" in2="blur" operator="over" />
-        </filter>
-        <linearGradient id="cyberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#00f0ff" />
-          <stop offset="100%" stopColor="#0077ff" />
-        </linearGradient>
-      </defs>
-      <g fill="#00f0ff" opacity="0.3" fontFamily="monospace" fontSize="24" fontWeight="bold">
-        <text x="120" y="110">1</text><text x="120" y="140">0</text><text x="120" y="170">1</text>
-        <text x="360" y="270">0</text><text x="360" y="300">1</text><text x="360" y="330">0</text>
-      </g>
-      <polygon points="250,60 400,140 400,360 250,440 100,360 100,140" fill="none" stroke="url(#cyberGrad)" strokeWidth="6" filter="url(#cyberGlow)"/>
-      <circle cx="250" cy="60" r="8" fill="#00f0ff" filter="url(#cyberGlow)" />
-      <circle cx="400" cy="140" r="8" fill="#00f0ff" />
-      <circle cx="400" cy="360" r="8" fill="#00f0ff" />
-      <circle cx="250" cy="440" r="8" fill="#00f0ff" filter="url(#cyberGlow)" />
-      <circle cx="100" cy="360" r="8" fill="#00f0ff" />
-      <circle cx="100" cy="140" r="8" fill="#00f0ff" />
-      <path d="M 310 190 L 190 190 L 190 250 L 310 250 L 310 320 L 190 320" fill="none" stroke="#00f0ff" strokeWidth="28" strokeLinejoin="miter" filter="url(#cyberGlow)"/>
-      <path d="M 310 190 L 190 190 L 190 250 L 310 250 L 310 320 L 190 320" fill="none" stroke="#E0F2FE" strokeWidth="8" strokeLinejoin="miter"/>
-    </svg>
-  );
-}
-
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -126,7 +95,6 @@ export default function ChatPage() {
       window.speechSynthesis.cancel(); 
       
       const cleanText = text
-        .replace(/<think>[\s\S]*?<\/think>/gi, '')
         .replace(/\[MAP:\s*([0-9.-]+)\s*,\s*([0-9.-]+)\]/gi, '')
         .trim();
 
@@ -222,8 +190,14 @@ export default function ChatPage() {
         const chunk = decoder.decode(value, { stream: true });
         accumulatedText += chunk;
         
+        // Strip out any <think> tags completely so they never show up
+        const strippedText = accumulatedText
+          .replace(/<think>[\s\S]*?<\/think>/gi, '')
+          .replace(/<think>[\s\S]*/gi, '')
+          .trim();
+
         setMessages(prev =>
-          prev.map(m => m.id === aiMessageId ? { ...m, content: accumulatedText } : m)
+          prev.map(m => m.id === aiMessageId ? { ...m, content: strippedText } : m)
         );
       }
     } catch (err: any) {
@@ -253,6 +227,15 @@ export default function ChatPage() {
         .markdown-body ul { padding-left: 20px; margin-bottom: 10px; }
         .markdown-body strong { color: inherit; font-weight: 600; }
 
+        /* THREE DOTS BOUNCE ANIMATION */
+        @keyframes bounceDot {
+          0%, 80%, 100% { transform: scale(0); }
+          40% { transform: scale(1.0); }
+        }
+        .dot-1 { animation: bounceDot 1.4s infinite ease-in-out both; animation-delay: -0.32s; }
+        .dot-2 { animation: bounceDot 1.4s infinite ease-in-out both; animation-delay: -0.16s; }
+        .dot-3 { animation: bounceDot 1.4s infinite ease-in-out both; }
+
         @media print {
           body, html { background: #ffffff !important; color: #000000 !important; height: auto !important; }
           .no-print { display: none !important; }
@@ -274,7 +257,7 @@ export default function ChatPage() {
         padding: '0 20px'
       }}>
         
-        {/* Header - Glassmorphic with Neon Blue Branding */}
+        {/* Header */}
         <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
@@ -288,7 +271,11 @@ export default function ChatPage() {
           zIndex: 10
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <SentrixLogo />
+            <img 
+              src="/sentrix-logo.png" 
+              alt="Sentrix Logo" 
+              style={{ width: '38px', height: '38px', objectFit: 'contain', filter: 'drop-shadow(0 0 8px rgba(0,240,255,0.6))' }} 
+            />
             <div>
               <h2 style={{ margin: 0, color: '#00f0ff', letterSpacing: '1px', fontSize: '22px', fontFamily: "'Outfit', sans-serif", fontWeight: 800, textShadow: '0 0 12px rgba(0, 240, 255, 0.5)' }}>
                 𝐒ᴇɴᴛʀɪx
@@ -309,8 +296,6 @@ export default function ChatPage() {
               boxShadow: '0 0 10px rgba(0, 240, 255, 0.15)',
               transition: 'all 0.2s ease' 
             }}
-            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0, 240, 255, 0.2)'}
-            onMouseOut={(e) => e.currentTarget.style.background = 'rgba(0, 240, 255, 0.1)'}
           >
             📄 Export PDF
           </button>
@@ -327,7 +312,11 @@ export default function ChatPage() {
         }}>
           {messages.length === 0 && (
             <div className="no-print" style={{ textAlign: 'center', color: '#475569', margin: 'auto', maxWidth: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-              <SentrixLogo className="w-16 h-16" />
+              <img 
+                src="/sentrix-logo.png" 
+                alt="Sentrix Center Logo" 
+                style={{ width: '64px', height: '64px', objectFit: 'contain', filter: 'drop-shadow(0 0 15px rgba(0,240,255,0.8))' }} 
+              />
               <p style={{ fontSize: '16px', fontWeight: 500, color: '#94a3b8', margin: 0 }}>Secure Connection Established.</p>
               <p style={{ fontSize: '13px', lineHeight: '1.6', margin: 0 }}>
                 Upload visual evidence, request pattern tracking, or analyze case hotspots.
@@ -335,15 +324,14 @@ export default function ChatPage() {
             </div>
           )}
 
-          {messages.map(m => {
+          {messages.map((m, index) => {
             const isUser = m.role === 'user';
+            const isLastMessage = index === messages.length - 1;
+            const showLoadingDots = !isUser && isLoading && isLastMessage && !m.content.trim();
             
             const mapRegex = /\[MAP:\s*([0-9.-]+)\s*,\s*([0-9.-]+)\]/i;
             const mapMatch = m.content.match(mapRegex);
-            const cleanContent = m.content
-              .replace(/<think>[\s\S]*?<\/think>/gi, '')
-              .replace(mapRegex, '')
-              .trim();
+            const finalDisplayContent = m.content.replace(mapRegex, '').trim();
             
             let lat = null, lng = null;
             if (mapMatch) {
@@ -365,26 +353,14 @@ export default function ChatPage() {
                   boxShadow: isUser ? '0 4px 20px rgba(0, 240, 255, 0.05)' : '0 4px 20px rgba(0, 0, 0, 0.2)',
                   fontSize: '15px',
                   lineHeight: '1.6',
-                  position: 'relative'
+                  position: 'relative',
+                  width: '100%'
                 }}>
-                  <div style={{ 
-                    fontSize: '13px', 
-                    letterSpacing: '1px', 
-                    marginBottom: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}>
+                  <div style={{ fontSize: '13px', letterSpacing: '1px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     {isUser ? (
                       <span style={{ fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', fontSize: '11px' }}>🕵️ INVESTIGATOR</span>
                     ) : (
-                      <span style={{ 
-                        fontFamily: "'Outfit', sans-serif", 
-                        fontWeight: 800, 
-                        color: '#00f0ff',
-                        letterSpacing: '1px',
-                        textShadow: '0 0 10px rgba(0, 240, 255, 0.4)'
-                      }}>
+                      <span style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800, color: '#00f0ff', letterSpacing: '1px', textShadow: '0 0 10px rgba(0, 240, 255, 0.4)' }}>
                         🤖 𝐒ᴇɴᴛʀɪx
                       </span>
                     )}
@@ -396,9 +372,18 @@ export default function ChatPage() {
                     </div>
                   )}
 
-                  <div className="markdown-body">
-                    <ReactMarkdown>{cleanContent}</ReactMarkdown>
-                  </div>
+                  {/* LOADING THREE DOTS ANIMATION */}
+                  {showLoadingDots ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 0' }}>
+                      <span className="dot-1" style={{ width: '8px', height: '8px', backgroundColor: '#00f0ff', borderRadius: '50%', display: 'inline-block' }}></span>
+                      <span className="dot-2" style={{ width: '8px', height: '8px', backgroundColor: '#00f0ff', borderRadius: '50%', display: 'inline-block' }}></span>
+                      <span className="dot-3" style={{ width: '8px', height: '8px', backgroundColor: '#00f0ff', borderRadius: '50%', display: 'inline-block' }}></span>
+                    </div>
+                  ) : (
+                    <div className="markdown-body">
+                      <ReactMarkdown>{finalDisplayContent}</ReactMarkdown>
+                    </div>
+                  )}
 
                   {!isUser && lat && lng && (
                     <div style={{ marginTop: '20px', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '12px', overflow: 'hidden', background: '#000' }}>
@@ -417,18 +402,17 @@ export default function ChatPage() {
                     </div>
                   )}
                   
-                  {!isUser && (
+                  {!isUser && finalDisplayContent && !showLoadingDots && (
                     <button 
                       className="no-print" 
-                      onClick={() => toggleSpeech(m.id, m.content)} 
+                      onClick={() => toggleSpeech(m.id, finalDisplayContent)} 
                       style={{ 
                         marginTop: '12px', fontSize: '12px', 
                         background: isCurrentlySpeaking ? 'rgba(239, 68, 68, 0.1)' : 'rgba(0, 240, 255, 0.1)', 
                         border: isCurrentlySpeaking ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(0, 240, 255, 0.2)', 
                         borderRadius: '12px', cursor: 'pointer', 
                         color: isCurrentlySpeaking ? '#ef4444' : '#00f0ff', 
-                        padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '6px',
-                        transition: 'all 0.2s'
+                        padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '6px'
                       }}
                     >
                       {isCurrentlySpeaking ? '🛑 Stop Reading' : '🔊 Read Aloud'}
@@ -441,14 +425,9 @@ export default function ChatPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Floating Input Dock Area */}
-        <div className="no-print" style={{ 
-          padding: '20px 0 30px 0',
-          background: 'linear-gradient(to top, #050B14 80%, transparent)'
-        }}>
-          
+        {/* Input Footer */}
+        <div className="no-print" style={{ padding: '20px 0 30px 0', background: 'linear-gradient(to top, #050B14 80%, transparent)' }}>
           <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-            
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '10px', padding: '0 10px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <span style={{ fontSize: '11px', color: '#64748b', alignSelf: 'center', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Mic Lang:</span>
@@ -459,7 +438,7 @@ export default function ChatPage() {
                       border: `1px solid ${language === lang ? '#00f0ff' : '#1e293b'}`, 
                       background: language === lang ? 'rgba(0, 240, 255, 0.1)' : 'transparent', 
                       color: language === lang ? '#00f0ff' : '#64748b', 
-                      cursor: 'pointer', fontSize: '11px', fontWeight: 600, transition: 'all 0.2s'
+                      cursor: 'pointer', fontSize: '11px', fontWeight: 600
                     }}>
                     {lang === 'en-IN' ? 'ENG' : lang === 'ta-IN' ? 'TAM' : 'KAN'}
                   </button>
@@ -484,11 +463,10 @@ export default function ChatPage() {
               padding: '6px 10px',
               transition: 'all 0.3s ease'
             }}>
-              
               <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} />
               
               <button type="button" onClick={() => fileInputRef.current?.click()} 
-                style={{ padding: '10px', background: 'transparent', color: '#94a3b8', border: 'none', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center' }}
+                style={{ padding: '10px', background: 'transparent', color: '#94a3b8', border: 'none', cursor: 'pointer', fontSize: '18px' }}
                 title="Attach Image"
               >
                 📎
@@ -501,18 +479,11 @@ export default function ChatPage() {
                 onFocus={() => setInputFocused(true)}
                 onBlur={() => setInputFocused(false)}
                 placeholder={isListening ? "Listening closely..." : "Ask 𝐒ᴇɴᴛʀɪx for database analytics or evidence scans..."}
-                style={{ 
-                  flex: 1, padding: '12px 10px', background: 'transparent', 
-                  border: 'none', color: '#f8fafc', outline: 'none', fontSize: '15px' 
-                }}
+                style={{ flex: 1, padding: '12px 10px', background: 'transparent', border: 'none', color: '#f8fafc', outline: 'none', fontSize: '15px' }}
               />
               
               <button type="button" onClick={startVoiceInput} 
-                style={{ 
-                  padding: '10px', background: isListening ? 'rgba(239, 68, 68, 0.2)' : 'transparent', 
-                  color: isListening ? '#ef4444' : '#94a3b8', border: 'none', borderRadius: '50%', 
-                  cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', marginRight: '4px'
-                }}
+                style={{ padding: '10px', background: isListening ? 'rgba(239, 68, 68, 0.2)' : 'transparent', color: isListening ? '#ef4444' : '#94a3b8', border: 'none', borderRadius: '50%', cursor: 'pointer', fontSize: '18px' }}
               >
                 {isListening ? '🎙️' : '🎤'}
               </button>
@@ -522,8 +493,7 @@ export default function ChatPage() {
                   padding: '10px 20px', background: isLoading ? '#1e293b' : '#00f0ff', 
                   color: '#050b14', border: 'none', borderRadius: '20px', 
                   cursor: isLoading ? 'default' : 'pointer', fontWeight: 700, fontSize: '14px',
-                  fontFamily: "'Outfit', sans-serif", letterSpacing: '1px',
-                  boxShadow: isLoading ? 'none' : '0 0 15px rgba(0, 240, 255, 0.4)'
+                  fontFamily: "'Outfit', sans-serif", letterSpacing: '1px'
                 }}
               >
                 {isLoading ? 'SCANNING' : 'SEND'}
