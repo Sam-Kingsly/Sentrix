@@ -1,0 +1,33 @@
+name: Catalyst AppSail Deployment
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allows you to manually trigger it from the Actions tab
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18' # Adjust if your project uses a different Node version
+
+      - name: Install Dependencies & Build
+        run: |
+          npm install
+          npm run build
+
+      - name: Install Catalyst CLI
+        run: npm install -g zcatalyst-cli
+
+      - name: Deploy to Catalyst AppSail
+        env:
+          CATALYST_TOKEN: ${{ secrets.CATALYST_TOKEN }}
+        run: catalyst deploy --only appsail --token $CATALYST_TOKEN
