@@ -14,14 +14,14 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [language, setLanguage] = useState('en-IN'); 
-  const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [inputFocused, setInputFocused] = useState(false);
   
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   
-  const recognitionRef = useRef<any>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -32,93 +32,120 @@ export default function ChatPage() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isLoading]);
+  }, [messages, isLoading, isProcessingVoice]);
 
+  // Clean up any playing audio if component unmounts
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recog = new SpeechRecognition();
-      recog.continuous = false;
-      recog.interimResults = true; 
-      recog.maxAlternatives = 1;   
-
-      recog.onstart = () => setIsListening(true);
-      recog.onend = () => setIsListening(false);
-      recog.onerror = () => setIsListening(false);
-
-      recog.onresult = (event: any) => {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          transcript += event.results[i][0].transcript;
-        }
-        if (transcript) setInput(transcript);
-      };
-
-      recognitionRef.current = recog;
-    }
+    return () => {
+      window.speechSynthesis.cancel();
+    };
   }, []);
 
   const handleLanguageChange = (newLang: string) => {
     setLanguage(newLang);
-    if (recognitionRef.current) {
-      recognitionRef.current.lang = newLang;
-      if (isListening) {
-        recognitionRef.current.stop();
-        setTimeout(() => recognitionRef.current.start(), 300);
-      }
-    }
+    // If currently playing speech, stop it when language changes
+    window.speechSynthesis.cancel();
+    setSpeakingMessageId(null);
   };
 
-  const startVoiceInput = () => {
-    if (!recognitionRef.current) return alert('Speech recognition is only supported in Chrome or Edge.');
-    try {
-      recognitionRef.current.lang = language;
-      if (isListening) {
-        recognitionRef.current.stop();
-        setIsListening(false);
-      } else {
-        recognitionRef.current.start();
-      }
-    } catch (err) {
-      setIsListening(false);
+  // 🎤 1. BUILT-IN NATIVE SPEECH-TO-TEXT (Bypasses Backend)
+  const toggleRecording = () => {
+    if (isRecording) {
+      setIsRecording(false);
+      return;
     }
-  };
 
-  const toggleSpeech = (id: string, text: string) => {
-    if ('speechSynthesis' in window) {
-      if (speakingMessageId === id) {
-        window.speechSynthesis.cancel();
-        setSpeakingMessageId(null);
-        return;
-      }
-
-      window.speechSynthesis.cancel(); 
-      
-      const cleanText = text
-        .replace(/\[MAP:\s*([0-9.-]+)\s*,\s*([0-9.-]+)\]/gi, '')
-        .trim();
-
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = 'en-IN'; 
-
-      utterance.onstart = () => setSpeakingMessageId(id);
-      utterance.onend = () => setSpeakingMessageId(null);
-      utterance.onerror = () => setSpeakingMessageId(null);
-
-      window.speechSynthesis.speak(utterance);
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      alert("Your browser doesn't support built-in speech recognition. Please use Google Chrome or Edge.");
+      return;
     }
-  };
 
-  useEffect(() => {
-    return () => {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
+    const recognition = new SpeechRecognition();
+    recognition.lang = language; 
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => setIsRecording(true);
+    
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(transcript);
+      setIsRecording(false);
     };
-  }, []);
 
-  const exportPDF = () => {
-    window.print();
+    recognition.onerror = (event: any) => {
+      console.error("Speech error", event.error);
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => setIsRecording(false);
+
+    recognition.start();
+  };
+
+  // 🔊 2. BUILT-IN NATIVE TEXT-TO-SPEECH (Bypasses Backend)
+  const toggleSpeech = (id: string, text: string) => {
+    // If clicking the currently speaking message, stop it
+    if (speakingMessageId === id) {
+      window.speechSynthesis.cancel();
+      setSpeakingMessageId(null);
+      return;
+    }
+
+    // Stop any other playing audio
+    window.speechSynthesis.cancel();
+    setSpeakingMessageId(id);
+
+    // Clean markdown syntax before reading aloud
+    const cleanText = text
+      .replace(/\[MAP:\s*([0-9.-]+)\s*,\s*([0-9.-]+)\]/gi, '')
+      .replace(/```[\s\S]*?```/g, '')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/[*_#`[\]()>-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = language;
+    utterance.rate = 1.0; 
+    utterance.pitch = 1.0;
+
+    utterance.onend = () => setSpeakingMessageId(null);
+    utterance.onerror = () => setSpeakingMessageId(null);
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Catalyst SmartBrowz PDF Generation
+  const exportPDF = async () => {
+    try {
+      setIsLoading(true);
+      const reportHtml = document.querySelector('.print-area')?.innerHTML || '<h1>Sentrix Report</h1>';
+      
+      const response = await fetch('/api/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          htmlContent: `<html><head><style>body{font-family:sans-serif;}</style></head><body>${reportHtml}</body></html>` 
+        })
+      });
+
+      if (!response.ok) throw new Error("PDF generation failed");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Sentrix_Analysis.pdf';
+      a.click();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to generate PDF via Catalyst SmartBrowz.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,6 +187,7 @@ export default function ChatPage() {
     const updatedMessages = [...messages, newUserMessage];
     setMessages(updatedMessages);
     setInput('');
+    const currentImageBase64 = selectedImage; 
     setSelectedImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     setIsLoading(true);
@@ -168,42 +196,31 @@ export default function ChatPage() {
     setMessages(prev => [...prev, { id: aiMessageId, role: 'assistant', content: '' }]);
 
     try {
+      // Fetch Catalyst API Endpoint
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: updatedMessages }),
+        body: JSON.stringify({ 
+          messages: updatedMessages,
+          imageBase64: currentImageBase64,
+          language: language
+        }),
         signal: abortControllerRef.current.signal, 
       });
 
       if (!response.ok) throw new Error('Failed to fetch AI response');
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      if (!reader) throw new Error('No reader available');
+      const data = await response.json();
+      const aiText = data.content || "Analysis complete.";
 
-      let accumulatedText = '';
+      setMessages(prev =>
+        prev.map(m => m.id === aiMessageId ? { ...m, content: aiText } : m)
+      );
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        accumulatedText += chunk;
-        
-        // Strip out any <think> tags completely so they never show up
-        const strippedText = accumulatedText
-          .replace(/<think>[\s\S]*?<\/think>/gi, '')
-          .replace(/<think>[\s\S]*/gi, '')
-          .trim();
-
-        setMessages(prev =>
-          prev.map(m => m.id === aiMessageId ? { ...m, content: strippedText } : m)
-        );
-      }
     } catch (err: any) {
       if (err.name !== 'AbortError') {
         setMessages(prev =>
-          prev.map(m => m.id === aiMessageId ? { ...m, content: 'Error processing evidence.' } : m)
+          prev.map(m => m.id === aiMessageId ? { ...m, content: 'Error processing evidence with Catalyst Services.' } : m)
         );
       }
     } finally {
@@ -227,7 +244,6 @@ export default function ChatPage() {
         .markdown-body ul { padding-left: 20px; margin-bottom: 10px; }
         .markdown-body strong { color: inherit; font-weight: 600; }
 
-        /* THREE DOTS BOUNCE ANIMATION */
         @keyframes bounceDot {
           0%, 80%, 100% { transform: scale(0); }
           40% { transform: scale(1.0); }
@@ -288,13 +304,15 @@ export default function ChatPage() {
           
           <button 
             onClick={exportPDF} 
+            disabled={isLoading}
             className="no-print"
             style={{ 
               padding: '8px 16px', background: 'rgba(0, 240, 255, 0.1)', color: '#00f0ff', 
               border: '1px solid rgba(0, 240, 255, 0.3)', borderRadius: '20px', 
-              cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', 
+              cursor: isLoading ? 'default' : 'pointer', fontWeight: 'bold', fontSize: '13px', 
               boxShadow: '0 0 10px rgba(0, 240, 255, 0.15)',
-              transition: 'all 0.2s ease' 
+              transition: 'all 0.2s ease',
+              opacity: isLoading ? 0.5 : 1
             }}
           >
             📄 Export PDF
@@ -319,7 +337,7 @@ export default function ChatPage() {
               />
               <p style={{ fontSize: '16px', fontWeight: 500, color: '#94a3b8', margin: 0 }}>Secure Connection Established.</p>
               <p style={{ fontSize: '13px', lineHeight: '1.6', margin: 0 }}>
-                Upload visual evidence, request pattern tracking, or analyze case hotspots.
+                Upload visual evidence, request pattern tracking, or analyze case hotspots via Catalyst.
               </p>
             </div>
           )}
@@ -372,7 +390,6 @@ export default function ChatPage() {
                     </div>
                   )}
 
-                  {/* LOADING THREE DOTS ANIMATION */}
                   {showLoadingDots ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 0' }}>
                       <span className="dot-1" style={{ width: '8px', height: '8px', backgroundColor: '#00f0ff', borderRadius: '50%', display: 'inline-block' }}></span>
@@ -415,7 +432,7 @@ export default function ChatPage() {
                         padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '6px'
                       }}
                     >
-                      {isCurrentlySpeaking ? '🛑 Stop Reading' : '🔊 Read Aloud'}
+                      {isCurrentlySpeaking ? '🛑 Stop Audio' : '🔊 Read Aloud'}
                     </button>
                   )}
                 </div>
@@ -478,22 +495,34 @@ export default function ChatPage() {
                 onChange={(e) => setInput(e.target.value)}
                 onFocus={() => setInputFocused(true)}
                 onBlur={() => setInputFocused(false)}
-                placeholder={isListening ? "Listening closely..." : "Ask 𝐒ᴇɴᴛʀɪx for database analytics or evidence scans..."}
+                placeholder={isProcessingVoice ? "Processing speech..." : isRecording ? "Listening... (Speak now)" : "Ask 𝐒ᴇɴᴛʀɪx for database analytics or evidence scans..."}
+                disabled={isRecording || isProcessingVoice}
                 style={{ flex: 1, padding: '12px 10px', background: 'transparent', border: 'none', color: '#f8fafc', outline: 'none', fontSize: '15px' }}
               />
               
-              <button type="button" onClick={startVoiceInput} 
-                style={{ padding: '10px', background: isListening ? 'rgba(239, 68, 68, 0.2)' : 'transparent', color: isListening ? '#ef4444' : '#94a3b8', border: 'none', borderRadius: '50%', cursor: 'pointer', fontSize: '18px' }}
+              <button type="button" onClick={toggleRecording} 
+                disabled={isProcessingVoice}
+                style={{ 
+                  padding: '10px', 
+                  background: isRecording ? 'rgba(239, 68, 68, 0.2)' : 'transparent', 
+                  color: isRecording ? '#ef4444' : '#94a3b8', 
+                  border: 'none', 
+                  borderRadius: '50%', 
+                  cursor: isProcessingVoice ? 'default' : 'pointer', 
+                  fontSize: '18px',
+                  opacity: isProcessingVoice ? 0.5 : 1
+                }}
               >
-                {isListening ? '🎙️' : '🎤'}
+                {isRecording ? '🛑' : '🎤'}
               </button>
               
-              <button type="submit" disabled={isLoading} 
+              <button type="submit" disabled={isLoading || isRecording || isProcessingVoice} 
                 style={{ 
                   padding: '10px 20px', background: isLoading ? '#1e293b' : '#00f0ff', 
                   color: '#050b14', border: 'none', borderRadius: '20px', 
-                  cursor: isLoading ? 'default' : 'pointer', fontWeight: 700, fontSize: '14px',
-                  fontFamily: "'Outfit', sans-serif", letterSpacing: '1px'
+                  cursor: (isLoading || isRecording || isProcessingVoice) ? 'default' : 'pointer', fontWeight: 700, fontSize: '14px',
+                  fontFamily: "'Outfit', sans-serif", letterSpacing: '1px',
+                  opacity: (isRecording || isProcessingVoice) ? 0.5 : 1
                 }}
               >
                 {isLoading ? 'SCANNING' : 'SEND'}

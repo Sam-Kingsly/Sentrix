@@ -1,0 +1,8 @@
+{
+  "command": "node server.js",
+  "buildPath": ".",
+  "stack": "node20",
+  "memory": 512,
+  "build_command": "npm install",
+  "run_command": "node server.js"
+}

@@ -1,0 +1,15 @@
+{
+  "functions": {
+    "targets": [
+      "sentrix_function"
+    ],
+    "ignore": [],
+    "source": "functions"
+  },
+  "appsail": [
+    {
+      "source": ".",
+      "name": "sentrix-ui"
+    }
+  ]
+}
