@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: # Allows you to manually trigger it from the Actions tab
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18' # Adjust if your project uses a different Node version
+          node-version: '20' # 🔥 Updated to Node 20 to support Next.js 16 & Tailwind v4
 
       - name: Install Dependencies & Build
         run: |
